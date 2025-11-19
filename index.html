@@ -3,82 +3,97 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ТТН Перевірка</title>
+  <title>ТТН → n8n</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    body {font-family:-apple-system,system-ui,sans-serif;padding:20px;background:#f5f5f5;margin:0;}
+    .c {max-width:400px;margin:20px auto;background:white;padding:25px;border-radius:16px;box-shadow:0 4px 20px rgba(0,0,0,.1);}
+    h2 {text-align:center;color:#0088cc;margin-bottom:30px;}
+    label {display:block;margin:15px 0 5px;font-weight:600;}
+    input,textarea {width:100%;padding:12px;border:1px solid #ddd;border-radius:10px;font-size:16px;box-sizing:border-box;}
+    textarea {height:100px;}
+    button {width:100%;padding:15px;background:#0088cc;color:white;border:none;border-radius:12px;font-size:18px;margin-top:20px;}
+    button:disabled {background:#888;cursor:not-allowed;}
+    .msg {margin-top:15px;text-align:center;font-weight:600;}
+  </style>
 </head>
-<body style="padding:20px;font-family:-apple-system,system-ui,sans-serif;background:#f5f5f5;margin:0;">
+<body>
+<div class="c">
+  <h2>Перевірка відправлення</h2>
 
-  <div style="background:white;padding:25px;border-radius:16px;max-width:400px;margin:0 auto;box-shadow:0 4px 20px rgba(0,0,0,.1);">
-    <h2 style="text-align:center;color:#0088cc;margin-bottom:30px;">Перевірка відправлення</h2>
+  <label>ТТН (тільки цифри)</label>
+  <input type="text" id="ttn" inputmode="numeric">
 
-    <label style="display:block;margin:15px 0 5px;font-weight:600;">ТТН (тільки цифри)</label>
-    <input type="text" id="ttn" inputmode="numeric" style="width:100%;padding:12px;font-size:16px;border:1px solid #ddd;border-radius:10px;box-sizing:border-box;">
+  <label>Номер замовлення (тільки цифри)</label>
+  <input type="text" id="order" inputmode="numeric">
 
-    <label style="display:block;margin:15px 0 5px;font-weight:600;">Номер замовлення (тільки цифри)</label>
-    <input type="text" id="order" inputmode="numeric" style="width:100%;padding:12px;font-size:16px;border:1px solid #ddd;border-radius:10px;box-sizing:border-box;">
+  <label>Опис проблеми</label>
+  <textarea id="desc"></textarea>
 
-    <label style="display:block;margin:15px 0 5px;font-weight:600;">Опис проблеми</label>
-    <textarea id="desc" style="width:100%;height:100px;padding:12px;font-size:16px;border:1px solid #ddd;border-radius:10px;box-sizing:border-box;"></textarea>
-
-    <button id="sendBtn" disabled style="margin-top:25px;width:100%;padding:15px;background:#0088cc;color:white;border:none;border-radius:12px;font-size:18px;cursor:pointer;">
-      Надіслати
-    </button>
-  </div>
+  <button id="send">Надіслати</button>
+  <div class="msg" id="status"></div>
+</div>
 
 <script>
-  const tg = window.Telegram.WebApp;
-  
-  console.log("=== WebApp завантажився ===");
+  const tg = Telegram.WebApp;
   tg.ready();
   tg.expand();
 
-  const btn = document.getElementById('sendBtn');
+  const btn = document.getElementById('send');
+  const status = document.getElementById('status');
   const ttn = document.getElementById('ttn');
   const order = document.getElementById('order');
   const desc = document.getElementById('desc');
 
   // тільки цифри
-  ttn.addEventListener('input', () => { ttn.value = ttn.value.replace(/\D/g,''); validate(); });
-  order.addEventListener('input', () => { order.value = order.value.replace(/\D/g,''); validate(); });
+  ttn.addEventListener('input', () => ttn.value = ttn.value.replace(/\D/g,''));
+  order.addEventListener('input', () => order.value = order.value.replace(/\D/g,''));
 
-  function validate() {
-    const ok = ttn.value.length > 0 && order.value.length > 0;
+  // перевірка полів
+  function check() {
+    const ok = ttn.value.trim() && order.value.trim();
     btn.disabled = !ok;
-    btn.style.opacity = ok ? '1' : '0.5';
-
-    if (ok) {
-      tg.MainButton.show();
-      tg.MainButton.setText("Надіслати");
-      tg.MainButton.color = "#0088cc";
-    } else {
-      tg.MainButton.hide();
-    }
-    console.log("validate → ok =", ok);
   }
+  [ttn, order, desc].forEach(el => el.addEventListener('input', check));
+  check();
 
-  // НАША КНОПКА
-  btn.onclick = function() {
+  btn.onclick = async () => {
     if (btn.disabled) return;
-    console.log("НАША КНОПКА НАТИСНУТА!");
 
-    const data = {
+    btn.disabled = true;
+    btn.textContent = "Відправляємо...";
+    status.textContent = "";
+    status.style.color = "";
+
+    const payload = {
       ttn: ttn.value.trim(),
       order_number: order.value.trim(),
-      description: desc.value.trim() || null
+      description: desc.value.trim() || null,
+      from_telegram: true,
+      user: tg.initDataUnsafe.user || null
     };
 
-    console.log("Відправляємо дані:", data);
-    tg.sendData(JSON.stringify(data));
-    console.log("tg.sendData() викликано! Форма має закритись...");
+    try {
+      const res = await fetch("https://pngstudio.app.n8n.cloud/webhook-test/67c254f2-6338-4047-ae01-e57b6362c35d", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      if (res.ok) {
+        status.textContent = "Успішно відправлено!";
+        status.style.color = "green";
+        setTimeout(() => tg.close(), 1500);
+      } else {
+        throw new Error("HTTP " + res.status);
+      }
+    } catch (e) {
+      status.textContent = "Помилка відправки";
+      status.style.color = "red";
+      btn.disabled = false;
+      btn.textContent = "Надіслати";
+    }
   };
-
-  // ДУБЛЮЄМО на MainButton (на всяк випадок)
-  tg.MainButton.onClick(() => {
-    console.log("MainButton натиснута — викликаємо нашу кнопку");
-    btn.click();
-  });
-
-  validate();
 </script>
 </body>
 </html>
