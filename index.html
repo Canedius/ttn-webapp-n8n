@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Перевірка ТТН</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    body {font-family: -apple-system,system-ui,sans-serif; padding:20px; background:#f5f5f5;}
+    .c {max-width:400px; margin:0 auto; background:white; border-radius:16px; padding:24px; box-shadow:0 4px 20px rgba(0,0,0,.1);}
+    h2 {text-align:center; color:#0088cc; margin-bottom:30px;}
+    label {display:block; margin:15px 0 5px; font-weight:600;}
+    input, textarea {width:100%; padding:12px; border:1px solid #ddd; border-radius:10px; font-size:16px; box-sizing:border-box;}
+    textarea {height:100px;}
+    button {width:100%; padding:14px; background:#0088cc; color:white; border:none; border-radius:12px; font-size:18px; margin-top:20px;}
+    button:disabled {background:#aaa;}
+    .error {color:#d32f2f; font-size:14px;}
+  </style>
+</head>
+<body>
+<div class="c">
+  <h2>Перевірка відправлення</h2>
+  <label>ТТН (тільки цифри)</label>
+  <input type="text" id="ttn" inputmode="numeric">
+  <div class="error" id="e1"></div>
+
+  <label>Номер замовлення (тільки цифри)</label>
+  <input type="text" id="order" inputmode="numeric">
+  <div class="error" id="e2"></div>
+
+  <label>Опис проблеми</label>
+  <textarea id="desc"></textarea>
+
+  <button id="btn">Надіслати</button>
+</div>
+
+<script>
+  const tg = Telegram.WebApp;
+  tg.ready(); tg.expand();
+
+  const ttn = document.getElementById('ttn');
+  const order = document.getElementById('order');
+  const desc = document.getElementById('desc');
+  const btn = document.getElementById('btn');
+
+  [ttn, order].forEach(i => i.addEventListener('input', () => {
+    i.value = i.value.replace(/\D/g, '');
+    check();
+  }));
+
+  function check() {
+    let ok = ttn.value && order.value;
+    document.getElementById('e1').textContent = ttn.value ? '' : 'Введіть ТТН';
+    document.getElementById('e2').textContent = order.value ? '' : 'Введіть номер';
+    btn.disabled = !ok;
+  }
+  check();
+
+  btn.onclick = () => {
+    if (!check()) return;
+    tg.sendData(JSON.stringify({
+      ttn: ttn.value,
+      order_number: order.value,
+      description: desc.value.trim() || null
+    }));
+    tg.close();
+  };
+</script>
+</body>
+</html>
