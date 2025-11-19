@@ -30,8 +30,12 @@
 
 <script>
   const tg = Telegram.WebApp;
+  console.log("WebApp скрипт завантажився");
+  console.log("tg.initDataUnsafe:", tg.initDataUnsafe);
+
   tg.ready();
   tg.expand();
+  console.log("tg.ready() і tg.expand() викликано");
 
   const ttn = document.getElementById('ttn');
   const order = document.getElementById('order');
@@ -39,31 +43,52 @@
 
   // тільки цифри
   [ttn, order].forEach(el => el.addEventListener('input', () => {
+    const before = el.value;
     el.value = el.value.replace(/\D/g, '');
+    if (before !== el.value) console.log("Очищено нечислові символи в полі:", el.id);
     check();
   }));
 
   function check() {
-    const valid = ttn.value.trim() && order.value.trim();
-    tg.MainButton.setText("Надіслати");
-    valid ? tg.MainButton.show() : tg.MainButton.hide();
+    const valid = ttn.value.trim().length > 0 && order.value.trim().length > 0;
+    console.log("check() → valid =", valid, "| ТТН:", ttn.value, "| Замовлення:", order.value);
+
+    if (valid) {
+      tg.MainButton.setText("Надіслати");
+      tg.MainButton.show();
+      tg.MainButton.color = "#0088cc";
+      tg.MainButton.setParams({is_active: true});
+      console.log("MainButton показано і активовано");
+    } else {
+      tg.MainButton.hide();
+      console.log("MainButton приховано (поля не заповнені)");
+    }
   }
 
-  // головна подія — саме вона працює у всіх 100% випадків
+  // головна кнопка Telegram
   tg.MainButton.onClick(() => {
-    tg.sendData(JSON.stringify({
+    console.log("MainButton натиснуто!");
+
+    const payload = {
       ttn: ttn.value.trim(),
       order_number: order.value.trim(),
       description: desc.value.trim() || null
-    }));
-    tg.close();
+    };
+
+    console.log("Відправляємо дані через sendData():", payload);
+
+    try {
+      tg.sendData(JSON.stringify(payload));
+      console.log("tg.sendData() успішно викликано!");
+      console.log("Форма має закритись автоматично...");
+    } catch (err) {
+      console.error("ПОМИЛКА при tg.sendData():", err);
+    }
   });
 
-  // перевірка при старті і при зміні полів
+  // перевірка при старті
   check();
-  ttn.addEventListener('input', check);
-  order.addEventListener('input', check);
-  desc.addEventListener('input', check);
+  console.log("Форма готова до роботи");
 </script>
 </body>
 </html>
