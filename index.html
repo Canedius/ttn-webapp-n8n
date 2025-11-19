@@ -3,68 +3,63 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Перевірка ТТН</title>
+  <title>ТТН Перевірка</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <style>
-    body {font-family:-apple-system,system-ui,sans-serif; padding:20px; background:#f5f5f5; margin:0;}
-    .c {max-width:400px; margin:20px auto; background:white; border-radius:16px; padding:24px; box-shadow:0 4px 20px rgba(0,0,0,.1);}
-    h2 {text-align:center; color:#0088cc; margin-bottom:30px;}
-    label {display:block; margin:15px 0 5px; font-weight:600;}
-    input, textarea {width:100%; padding:12px; border:1px solid #ddd; border-radius:10px; font-size:16px; box-sizing:border-box;}
-    textarea {height:100px;}
-    button {width:100%; padding:15px; background:#0088cc; color:white; border:none; border-radius:12px; font-size:18px; margin-top:25px; cursor:pointer;}
-    button:disabled {background:#aaa; cursor:not-allowed;}
-  </style>
 </head>
-<body>
-<div class="c">
-  <h2>Перевірка відправлення</h2>
+<body style="padding:20px;font-family:-apple-system,system-ui,sans-serif;background:#f5f5f5;margin:0;">
 
-  <label>ТТН (тільки цифри)</label>
-  <input type="text" id="ttn" inputmode="numeric">
+  <div style="background:white;padding:25px;border-radius:16px;max-width:400px;margin:0 auto;box-shadow:0 4px 20px rgba(0,0,0,.1);">
+    <h2 style="text-align:center;color:#0088cc;margin-bottom:30px;">Перевірка відправлення</h2>
 
-  <label>Номер замовлення (тільки цифри)</label>
-  <input type="text" id="order" inputmode="numeric">
+    <label style="display:block;margin:15px 0 5px;font-weight:600;">ТТН (тільки цифри)</label>
+    <input type="text" id="ttn" inputmode="numeric" style="width:100%;padding:12px;font-size:16px;border:1px solid #ddd;border-radius:10px;box-sizing:border-box;">
 
-  <label>Опис проблеми (не обов’язково)</label>
-  <textarea id="desc"></textarea>
+    <label style="display:block;margin:15px 0 5px;font-weight:600;">Номер замовлення (тільки цифри)</label>
+    <input type="text" id="order" inputmode="numeric" style="width:100%;padding:12px;font-size:16px;border:1px solid #ddd;border-radius:10px;box-sizing:border-box;">
 
-  <!-- НАША КНОПКА -->
-  <button id="myBtn" disabled>Надіслати</button>
-</div>
+    <label style="display:block;margin:15px 0 5px;font-weight:600;">Опис проблеми</label>
+    <textarea id="desc" style="width:100%;height:100px;padding:12px;font-size:16px;border:1px solid #ddd;border-radius:10px;box-sizing:border-box;"></textarea>
+
+    <button id="sendBtn" disabled style="margin-top:25px;width:100%;padding:15px;background:#0088cc;color:white;border:none;border-radius:12px;font-size:18px;cursor:pointer;">
+      Надіслати
+    </button>
+  </div>
 
 <script>
-  const tg = Telegram.WebApp;
+  const tg = window.Telegram.WebApp;
+  
+  console.log("=== WebApp завантажився ===");
   tg.ready();
   tg.expand();
 
+  const btn = document.getElementById('sendBtn');
   const ttn = document.getElementById('ttn');
   const order = document.getElementById('order');
   const desc = document.getElementById('desc');
-  const myBtn = document.getElementById('myBtn');
 
   // тільки цифри
-  [ttn, order].forEach(el => el.addEventListener('input', () => {
-    el.value = el.value.replace(/\D/g, '');
-    validate();
-  }));
+  ttn.addEventListener('input', () => { ttn.value = ttn.value.replace(/\D/g,''); validate(); });
+  order.addEventListener('input', () => { order.value = order.value.replace(/\D/g,''); validate(); });
 
   function validate() {
-    const valid = ttn.value.trim() && order.value.trim();
-    myBtn.disabled = !valid;
+    const ok = ttn.value.length > 0 && order.value.length > 0;
+    btn.disabled = !ok;
+    btn.style.opacity = ok ? '1' : '0.5';
 
-    if (valid) {
+    if (ok) {
       tg.MainButton.show();
       tg.MainButton.setText("Надіслати");
       tg.MainButton.color = "#0088cc";
     } else {
       tg.MainButton.hide();
     }
+    console.log("validate → ok =", ok);
   }
 
-  // === НАЙВАЖЛИВІШЕ: прив’язуємо нашу кнопку до MainButton ===
-  myBtn.onclick = () => {
-    if (myBtn.disabled) return;
+  // НАША КНОПКА
+  btn.onclick = function() {
+    if (btn.disabled) return;
+    console.log("НАША КНОПКА НАТИСНУТА!");
 
     const data = {
       ttn: ttn.value.trim(),
@@ -72,12 +67,16 @@
       description: desc.value.trim() || null
     };
 
-    console.log("Відправляємо:", data);
-    tg.sendData(JSON.stringify(data));   // ← це точно спрацює
+    console.log("Відправляємо дані:", data);
+    tg.sendData(JSON.stringify(data));
+    console.log("tg.sendData() викликано! Форма має закритись...");
   };
 
-  // також дублюємо на випадок, якщо хтось натисне саме MainButton знизу
-  tg.MainButton.onClick(() => myBtn.click());
+  // ДУБЛЮЄМО на MainButton (на всяк випадок)
+  tg.MainButton.onClick(() => {
+    console.log("MainButton натиснута — викликаємо нашу кнопку");
+    btn.click();
+  });
 
   validate();
 </script>
