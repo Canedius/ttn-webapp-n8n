@@ -7,11 +7,13 @@
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <style>
     body {font-family:-apple-system,system-ui,sans-serif; padding:20px; background:#f5f5f5; margin:0;}
-    .c {max-width:400px; margin:0 auto; background:white; border-radius:16px; padding:24px; box-shadow:0 4px 20px rgba(0,0,0,.1);}
+    .c {max-width:400px; margin:20px auto; background:white; border-radius:16px; padding:24px; box-shadow:0 4px 20px rgba(0,0,0,.1);}
     h2 {text-align:center; color:#0088cc; margin-bottom:30px;}
     label {display:block; margin:15px 0 5px; font-weight:600;}
     input, textarea {width:100%; padding:12px; border:1px solid #ddd; border-radius:10px; font-size:16px; box-sizing:border-box;}
-    textarea {height:100px; resize:vertical;}
+    textarea {height:100px;}
+    button {width:100%; padding:15px; background:#0088cc; color:white; border:none; border-radius:12px; font-size:18px; margin-top:25px; cursor:pointer;}
+    button:disabled {background:#aaa; cursor:not-allowed;}
   </style>
 </head>
 <body>
@@ -26,69 +28,58 @@
 
   <label>Опис проблеми (не обов’язково)</label>
   <textarea id="desc"></textarea>
+
+  <!-- НАША КНОПКА -->
+  <button id="myBtn" disabled>Надіслати</button>
 </div>
 
 <script>
   const tg = Telegram.WebApp;
-  console.log("WebApp скрипт завантажився");
-  console.log("tg.initDataUnsafe:", tg.initDataUnsafe);
-
   tg.ready();
   tg.expand();
-  console.log("tg.ready() і tg.expand() викликано");
 
   const ttn = document.getElementById('ttn');
   const order = document.getElementById('order');
   const desc = document.getElementById('desc');
+  const myBtn = document.getElementById('myBtn');
 
   // тільки цифри
   [ttn, order].forEach(el => el.addEventListener('input', () => {
-    const before = el.value;
     el.value = el.value.replace(/\D/g, '');
-    if (before !== el.value) console.log("Очищено нечислові символи в полі:", el.id);
-    check();
+    validate();
   }));
 
-  function check() {
-    const valid = ttn.value.trim().length > 0 && order.value.trim().length > 0;
-    console.log("check() → valid =", valid, "| ТТН:", ttn.value, "| Замовлення:", order.value);
+  function validate() {
+    const valid = ttn.value.trim() && order.value.trim();
+    myBtn.disabled = !valid;
 
     if (valid) {
-      tg.MainButton.setText("Надіслати");
       tg.MainButton.show();
+      tg.MainButton.setText("Надіслати");
       tg.MainButton.color = "#0088cc";
-      tg.MainButton.setParams({is_active: true});
-      console.log("MainButton показано і активовано");
     } else {
       tg.MainButton.hide();
-      console.log("MainButton приховано (поля не заповнені)");
     }
   }
 
-  // головна кнопка Telegram
-  tg.MainButton.onClick(() => {
-    console.log("MainButton натиснуто!");
+  // === НАЙВАЖЛИВІШЕ: прив’язуємо нашу кнопку до MainButton ===
+  myBtn.onclick = () => {
+    if (myBtn.disabled) return;
 
-    const payload = {
+    const data = {
       ttn: ttn.value.trim(),
       order_number: order.value.trim(),
       description: desc.value.trim() || null
     };
 
-    console.log("Відправляємо дані через sendData():", payload);
+    console.log("Відправляємо:", data);
+    tg.sendData(JSON.stringify(data));   // ← це точно спрацює
+  };
 
-    try {
-      tg.sendData(JSON.stringify(payload));
-      console.log("tg.sendData() успішно викликано!");
-      console.log("Форма має закритись автоматично...");
-    } catch (err) {
-      console.error("ПОМИЛКА при tg.sendData():", err);
-    }
-  });
+  // також дублюємо на випадок, якщо хтось натисне саме MainButton знизу
+  tg.MainButton.onClick(() => myBtn.click());
 
-  // перевірка при старті
-  check();
-  console.log("Форма готова до роботи");
+  validate();
 </script>
 </body>
 </html>
