@@ -3,97 +3,225 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ТТН → n8n</title>
+  <title>Заявка на доставку</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <style>
-    body {font-family:-apple-system,system-ui,sans-serif;padding:20px;background:#f5f5f5;margin:0;}
-    .c {max-width:400px;margin:20px auto;background:white;padding:25px;border-radius:16px;box-shadow:0 4px 20px rgba(0,0,0,.1);}
-    h2 {text-align:center;color:#0088cc;margin-bottom:30px;}
-    label {display:block;margin:15px 0 5px;font-weight:600;}
-    input,textarea {width:100%;padding:12px;border:1px solid #ddd;border-radius:10px;font-size:16px;box-sizing:border-box;}
-    textarea {height:100px;}
-    button {width:100%;padding:15px;background:#0088cc;color:white;border:none;border-radius:12px;font-size:18px;margin-top:20px;}
-    button:disabled {background:#888;cursor:not-allowed;}
-    .msg {margin-top:15px;text-align:center;font-weight:600;}
+    :root {
+      --bg: #f7fbff;
+      --accent: #0f9bd7;
+      --accent-dark: #0c82b5;
+      --text: #1f2d3d;
+      --muted: #5f6c80;
+      --border: #d9e2ec;
+    }
+    * {box-sizing: border-box;}
+    body {
+      margin: 0;
+      font-family: "Segoe UI", -apple-system, system-ui, sans-serif;
+      background: radial-gradient(circle at 20% 20%, rgba(15,155,215,0.12), transparent 30%),
+                  radial-gradient(circle at 80% 0%, rgba(15,155,215,0.12), transparent 25%),
+                  var(--bg);
+      color: var(--text);
+      padding: 24px;
+    }
+    .card {
+      max-width: 480px;
+      margin: 16px auto 32px;
+      background: #fff;
+      border-radius: 18px;
+      box-shadow: 0 20px 60px rgba(15,155,215,0.12);
+      padding: 26px;
+      border: 1px solid var(--border);
+    }
+    h1 {
+      margin: 0 0 18px;
+      font-size: 22px;
+      text-align: center;
+    }
+    p.subtitle {
+      margin: 0 0 22px;
+      color: var(--muted);
+      text-align: center;
+      font-size: 15px;
+      line-height: 1.4;
+    }
+    label {display:block;font-weight:600;margin:14px 0 6px;}
+    select, input, textarea {
+      width: 100%;
+      padding: 12px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      font-size: 15px;
+      background: #fdfefe;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    textarea {min-height: 90px;resize: vertical;}
+    select:focus, input:focus, textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(15,155,215,0.18);
+    }
+    .row {display:flex;gap:12px;flex-wrap:wrap;}
+    .row .col {flex:1;min-width:150px;}
+    button {
+      width: 100%;
+      margin-top: 18px;
+      padding: 14px;
+      border: none;
+      border-radius: 14px;
+      background: linear-gradient(120deg, var(--accent) 0%, #13b0ec 100%);
+      color: white;
+      font-size: 17px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform .1s ease, filter .15s ease, opacity .15s ease;
+    }
+    button:hover {filter: brightness(1.03);}
+    button:active {transform: translateY(1px);}
+    button:disabled {opacity: .6;cursor:not-allowed;transform:none;}
+    .msg {margin-top:12px;text-align:center;font-weight:600;font-size:14px;}
+    .hidden {display:none;}
   </style>
 </head>
 <body>
-<div class="c">
-  <h2>Додавання ТТН</h2>
+  <div class="card">
+    <h1>Створення доставки товару</h1>
+    <p class="subtitle">Заповніть дані для оформлення доставки. Оберіть, чи маєте ТТН.</p>
 
-  <label>ТТН (тільки цифри)</label>
-  <input type="text" id="ttn" inputmode="numeric">
+    <label for="mode">Статус ТТН</label>
+    <select id="mode">
+      <option value="has-ttn" selected>Є ТТН</option>
+      <option value="no-ttn">Немає ТТН</option>
+    </select>
 
-  <label>Номер замовлення (тільки цифри)</label>
-  <input type="text" id="order" inputmode="numeric">
+    <div id="has-ttn-fields">
+      <label for="ttn">ТТН (нова пошта)</label>
+      <input type="text" id="ttn" inputmode="numeric" autocomplete="off" placeholder="20451000000000" required>
 
-  <label>Коментар (За потреби)</label>
-  <textarea id="desc"></textarea>
+      <label for="order">Номер замовлення в CRM</label>
+      <input type="text" id="order" inputmode="numeric" autocomplete="off" placeholder="12345" required>
 
-  <button id="send">Надіслати</button>
-  <div class="msg" id="status"></div>
-</div>
+      <label for="desc">Опис продукції</label>
+      <textarea id="desc" placeholder="Що має приїхати?" required></textarea>
+
+      <label for="eta-ttn">Орієнтовна дата приходу товару</label>
+      <input type="date" id="eta-ttn" required>
+    </div>
+
+    <div id="no-ttn-fields" class="hidden">
+      <label for="company">Назва компанії / вид доставки або номер телефону</label>
+      <input type="text" id="company" autocomplete="on" placeholder="«Топ Тайм», Самовивіз / +380..." required>
+
+      <label for="crm">Номер замовлення в CRM</label>
+      <input type="text" id="crm" autocomplete="off" placeholder="12345" required>
+
+      <label for="product">Опис продукції</label>
+      <textarea id="product" placeholder="Що має приїхати?" required></textarea>
+
+      <label for="eta-no-ttn">Орієнтовна дата приходу товару</label>
+      <input type="date" id="eta-no-ttn" required>
+    </div>
+
+    <button id="send">Надіслати</button>
+    <div class="msg" id="status"></div>
+  </div>
 
 <script>
   const tg = Telegram.WebApp;
   tg.ready();
   tg.expand();
 
+  const mode = document.getElementById('mode');
+  const hasTtnBlock = document.getElementById('has-ttn-fields');
+  const noTtnBlock = document.getElementById('no-ttn-fields');
   const btn = document.getElementById('send');
   const status = document.getElementById('status');
   const ttn = document.getElementById('ttn');
   const order = document.getElementById('order');
   const desc = document.getElementById('desc');
+  const etaTtn = document.getElementById('eta-ttn');
+  const company = document.getElementById('company');
+  const crm = document.getElementById('crm');
+  const product = document.getElementById('product');
+  const etaNoTtn = document.getElementById('eta-no-ttn');
 
-  // тільки цифри
-  ttn.addEventListener('input', () => ttn.value = ttn.value.replace(/\D/g,''));
-  order.addEventListener('input', () => order.value = order.value.replace(/\D/g,''));
+  // залишаємо тільки цифри у числових полях
+  [ttn, order].forEach(el => el.addEventListener('input', () => {
+    el.value = el.value.replace(/\D/g, '');
+  }));
 
-  // перевірка полів
+  function toggleBlocks() {
+    const hasTtn = mode.value === 'has-ttn';
+    hasTtnBlock.classList.toggle('hidden', !hasTtn);
+    noTtnBlock.classList.toggle('hidden', hasTtn);
+    check();
+  }
+
   function check() {
-    const ok = ttn.value.trim() && order.value.trim();
+    let ok = false;
+    if (mode.value === 'has-ttn') {
+      ok = ttn.value.trim() && order.value.trim() && desc.value.trim() && etaTtn.value;
+    } else {
+      ok = company.value.trim() && crm.value.trim() && product.value.trim() && etaNoTtn.value;
+    }
     btn.disabled = !ok;
   }
-  [ttn, order, desc].forEach(el => el.addEventListener('input', check));
-  check();
+
+  [mode, ttn, order, desc, etaTtn, company, crm, product, etaNoTtn].forEach(el => {
+    el.addEventListener('input', check);
+    el.addEventListener('change', check);
+  });
+  mode.addEventListener('change', toggleBlocks);
+  toggleBlocks();
 
   btn.onclick = async () => {
     if (btn.disabled) return;
-
     btn.disabled = true;
-    btn.textContent = "Відправляємо...";
-    status.textContent = "";
-    status.style.color = "";
+    btn.textContent = 'Надсилаємо...';
+    status.textContent = '';
+    status.style.color = '';
 
-    const payload = {
+    const hasTtn = mode.value === 'has-ttn';
+    const payload = hasTtn ? {
+      mode: 'has_ttn',
       ttn: ttn.value.trim(),
       order_number: order.value.trim(),
-      description: desc.value.trim() || null,
+      description: desc.value.trim(),
+      eta_date: etaTtn.value,
+      from_telegram: true,
+      user: tg.initDataUnsafe.user || null
+    } : {
+      mode: 'no_ttn',
+      company_contact: company.value.trim(),
+      crm_order_number: crm.value.trim(),
+      product_description: product.value.trim(),
+      eta_date: etaNoTtn.value,
       from_telegram: true,
       user: tg.initDataUnsafe.user || null
     };
 
     try {
-      const res = await fetch("https://pngstudio.app.n8n.cloud/webhook-test/67c254f2-6338-4047-ae01-e57b6362c35d", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const res = await fetch('https://pngstudio.app.n8n.cloud/webhook/67c254f2-6338-4047-ae01-e57b6362c35d', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
 
       if (res.ok) {
-        status.textContent = "Успішно відправлено!";
-        status.style.color = "green";
+        status.textContent = 'Успішно відправлено!';
+        status.style.color = 'green';
         setTimeout(() => tg.close(), 1500);
       } else {
-        throw new Error("HTTP " + res.status);
+        throw new Error('HTTP ' + res.status);
       }
     } catch (e) {
-      status.textContent = "Помилка відправки";
-      status.style.color = "red";
+      status.textContent = 'Помилка відправки';
+      status.style.color = 'red';
       btn.disabled = false;
-      btn.textContent = "Надіслати";
+      btn.textContent = 'Надіслати';
     }
   };
 </script>
 </body>
 </html>
+
